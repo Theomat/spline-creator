@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+
+  <head>
+    <!--Import Google Icon Font-->
+    <link rel="stylesheet" href="google.material.icons.css">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="./materialize/css/materialize.min.css">
+
+    <meta charset="utf-8">
+    <title>Spline Creator</title>
+
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Linear system solver from https://github.com/lovasoa/linear-solve under MIT License -->
+    <script src="./gauss-jordan.js"></script>
+    <!-- Our local code -->
+    <!-- <script src="./functional.js"></script>-->
+    <!-- Our local code -->
+    <script src="./splines.js"></script>
+    <script src="./ui.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- Top Thing -->
+      <div class="row">
+        <!-- Grid -->
+        <div class="col s6">
+          <div class="row valign-wrapper">
+            <div class="col">
+              <span>Grid</span>
+              <div class="switch">
+                <label>
+                  Off
+                  <input type="checkbox" id="grid-show">
+                  <span class="lever"></span>
+                  On
+                </label>
+              </div>
+            </div>
+            <div class="col">
+              <p class="range-field">
+                <input class="tooltipped" data-position="bottom" data-tooltip="# of grid divisions" type="range" id="grid-divs" min="2" max="20" value="5" />
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col s6">
+          <!-- Probability -->
+          <div class="row valign-wrapper">
+            <div class="col">
+              <span>Probability</span>
+              <div class="switch">
+                <label>
+                  Off
+                  <input type="checkbox" id="probability-show">
+                  <span class="lever"></span>
+                  On
+                </label>
+              </div>
+            </div>
+            <div class="col">
+              <p class="range-field">
+                <input class="tooltipped" data-position="bottom" data-tooltip="model granularity" type="range" id="probability-granularity" min="2" max="100" value="5" />
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <!-- Canvas Level -->
+      <div class="row valign-wrapper">
+        <div class="col s7">
+          <canvas id="canvas" width="400" height="400"></canvas>
+        </div>
+        <div class="col s5">
+          <!-- Point pane -->
+          <div class="row" id="point-pane">
+            <div class="row">
+              <div class="col s6">
+                <span>Point</span>
+              </div>
+              <div class="col s6">
+                <a class="waves-effect waves-light btn red tooltipped" data-position="bottom" data-tooltip="Delete" onclick="onClickDelete()">Delete</a>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col s6">
+                <input id="point-x" type="number" min="0" max="1" step="0.01">
+                <label for="point-x">X</label>
+              </div>
+              <div class="col s6">
+                <input id="point-y" type="number" min="0" max="1" step="0.01">
+                <label for="point-y">Y</label>
+              </div>
+
+            </div>
+          </div>
+          <div class="divider"></div>
+          <!-- Array pane -->
+          <div class="row valign-wrapper">
+            <div class="col s3">
+              <span>Array :</span>
+            </div>
+            <div class="col s3">
+              <input id="array-start" type="text" data-length="1">
+              <label for="array-start">start</label>
+            </div>
+            <div class="col s3">
+              <input id="array-end" type="text" data-length="1">
+              <label for="array-end">end</label>
+            </div>
+            <div class="col s3">
+              <input id="array-separator" type="text" data-length="1">
+              <label for="array-separator">separator</label>
+            </div>
+
+          </div>
+          <!-- Button pane -->
+          <div class="row valign-wrapper">
+            <div class="col s4">
+              <a class="waves-effect waves-light btn tooltipped" data-position="bottom" data-tooltip="Clear points" onclick="onClickClear()">Clear</a>
+            </div>
+            <div class="col s4">
+              <a class="waves-effect waves-light btn modal-trigger" href="#modal-import">Import</a>
+            </div>
+            <div class="col s4">
+              <a class="waves-effect waves-light btn tooltipped modal-trigger" data-position="bottom" data-tooltip="Copy to clipboard" href="#modal-export">Export</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <!-- bottom Level -->
+      <div class="row valign-wrapper">
+        <div class="col">
+          <ul class="collapsible">
+            <li>
+              <div class="collapsible-header"><i class="material-icons">live_help</i>Export help</div>
+              <div class="collapsible-body"><span>The data exported is composed of two arrays. The first array is an array of x coordinated in the [0;1] range, these values are needed to determine the index of the polynomial to be used for a
+                  given
+                  x. The second array is an array of arrays of coefficients of polynomials of order 3 in ascending order. As such the first element of the first array is the
+                  constant part of the first polynomial.</span></div>
+            </li>
+            <li>
+              <div class="collapsible-header"><i class="material-icons">live_help</i>Probability Export help</div>
+              <div class="collapsible-body"><span>This exports as if the curve were the function of density of a probability. The data exported is composed of one array of doubles. To get the generated value, generate unformly in [0;1[, then
+                  iterate over the array until the iterated number is greater than the generated number, the index is the random number in the range of [0; array.length[.</span></div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <textarea class="hide" id="copy"></textarea>
+    <!-- Modal Structure for Import -->
+    <div id="modal-import" class="modal">
+      <div class="modal-content">
+        <h4>Import your curve</h4>
+        <textarea id="import-text" class="materialize-textarea"></textarea>
+        <label for="import-text">Your arrays</label>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat" onclick="onClickImport()">Import</a>
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+      </div>
+    </div>
+    <!-- Modal Structure for Export -->
+    <div id="modal-export" class="modal">
+      <div class="modal-content">
+        <h4>Export data as...</h4>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat" onclick="onClickExport()">Curve</a>
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat" onclick="onClickExportProbability()">Probability</a>
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+      </div>
+    </div>
+    <!--JavaScript at end of body for optimized loading-->
+    <!-- Compiled and minified JavaScript -->
+    <script src="./materialize/js/materialize.min.js"></script>
+  </body>
+
+</html>
